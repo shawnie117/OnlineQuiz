@@ -1,115 +1,102 @@
 import java.awt.*;
-import java.awt.event.ActionEvent;
 import java.sql.*;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
+import java.util.*;
 import javax.swing.*;
 
-class Question {
-    String question, optA, optB, optC, optD, correct;
-
-    public Question(String question, String optA, String optB, String optC, String optD, String correct) {
-        this.question = question;
-        this.optA = optA;
-        this.optB = optB;
-        this.optC = optC;
-        this.optD = optD;
-        this.correct = correct;
-    }
-}
-
 public class QuizApp {
-    private static final String URL = "jdbc:mysql://localhost:3306/quiz_db";
-    private static final String USER = "root";
-    private static final String PASSWORD = "root"; // Empty password
-
-    private static int currentIndex = 0;
-    private static int score = 0;
-    private static List<Question> questions;
-    private static JFrame frame;
-    private static JLabel questionLabel;
-    private static JRadioButton[] options;
-    private static ButtonGroup group;
+    static JFrame frame;
+    static JLabel questionLabel;
+    static JRadioButton opt1, opt2, opt3, opt4;
+    static ButtonGroup group;
+    static JButton nextBtn;
+    static ArrayList<String[]> quizList = new ArrayList<>();
+    static int index = 0, score = 0;
 
     public static void main(String[] args) {
         loadQuestions();
-        createUI();
-        showNextQuestion();
+        setupUI();
+        showQuestion();
     }
 
-    private static void loadQuestions() {
-        questions = new ArrayList<>();
-        try (Connection conn = DriverManager.getConnection(URL, USER, PASSWORD);
-                Statement stmt = conn.createStatement();
-                ResultSet rs = stmt.executeQuery("SELECT * FROM questions")) {
+    static void loadQuestions() {
+        try {
+            Connection con = DriverManager.getConnection("jdbc:mysql://localhost:3306/quiz_db", "root", "");
+            Statement stmt = con.createStatement();
+            ResultSet rs = stmt.executeQuery("SELECT * FROM questions");
 
             while (rs.next()) {
-                questions.add(new Question(rs.getString("question"),
-                        rs.getString("optionA"),
-                        rs.getString("optionB"),
-                        rs.getString("optionC"),
-                        rs.getString("optionD"),
-                        rs.getString("correctAnswer")));
+                String[] q = {
+                    rs.getString("question"),
+                    rs.getString("optionA"),
+                    rs.getString("optionB"),
+                    rs.getString("optionC"),
+                    rs.getString("optionD"),
+                    rs.getString("correctAnswer")
+                };
+                quizList.add(q);
             }
-            Collections.shuffle(questions);
+
+            Collections.shuffle(quizList);
         } catch (Exception e) {
-            e.printStackTrace();
+            System.out.println("DB Error: " + e);
         }
     }
 
-    private static void createUI() {
+    static void setupUI() {
         frame = new JFrame("Quiz App");
         frame.setSize(400, 300);
-        frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         frame.setLayout(new GridLayout(6, 1));
+        frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
 
-        questionLabel = new JLabel("Question will appear here");
-        frame.add(questionLabel);
-
-        options = new JRadioButton[4];
+        questionLabel = new JLabel("Question here");
+        opt1 = new JRadioButton();
+        opt2 = new JRadioButton();
+        opt3 = new JRadioButton();
+        opt4 = new JRadioButton();
         group = new ButtonGroup();
-        for (int i = 0; i < 4; i++) {
-            options[i] = new JRadioButton();
-            group.add(options[i]);
-            frame.add(options[i]);
-        }
+        group.add(opt1);
+        group.add(opt2);
+        group.add(opt3);
+        group.add(opt4);
 
-        JButton nextBtn = new JButton("Next");
-        frame.add(nextBtn);
-
-        nextBtn.addActionListener((ActionEvent e) -> {
+        nextBtn = new JButton("Next");
+        nextBtn.addActionListener(e -> {
             checkAnswer();
-            showNextQuestion();
+            showQuestion();
         });
+
+        frame.add(questionLabel);
+        frame.add(opt1);
+        frame.add(opt2);
+        frame.add(opt3);
+        frame.add(opt4);
+        frame.add(nextBtn);
 
         frame.setVisible(true);
     }
 
-    private static void showNextQuestion() {
-        if (currentIndex >= questions.size()) {
-            JOptionPane.showMessageDialog(frame, "Quiz Over! Your Score: " + score);
+    static void showQuestion() {
+        if (index >= quizList.size()) {
+            JOptionPane.showMessageDialog(frame, "Quiz Over! Score: " + score);
             frame.dispose();
             return;
         }
 
-        Question q = questions.get(currentIndex);
-        questionLabel.setText(q.question);
-        options[0].setText(q.optA);
-        options[1].setText(q.optB);
-        options[2].setText(q.optC);
-        options[3].setText(q.optD);
+        String[] q = quizList.get(index);
+        questionLabel.setText("Q" + (index + 1) + ": " + q[0]);
+        opt1.setText(q[1]);
+        opt2.setText(q[2]);
+        opt3.setText(q[3]);
+        opt4.setText(q[4]);
         group.clearSelection();
-
-        currentIndex++;
+        index++;
     }
 
-    private static void checkAnswer() {
-        Question q = questions.get(currentIndex - 1);
-        for (JRadioButton option : options) {
-            if (option.isSelected() && option.getText().equals(q.correct)) {
-                score++;
-            }
-        }
+    static void checkAnswer() {
+        String correct = quizList.get(index - 1)[5];
+        if (opt1.isSelected() && opt1.getText().equals(correct)) score++;
+        if (opt2.isSelected() && opt2.getText().equals(correct)) score++;
+        if (opt3.isSelected() && opt3.getText().equals(correct)) score++;
+        if (opt4.isSelected() && opt4.getText().equals(correct)) score++;
     }
 }
